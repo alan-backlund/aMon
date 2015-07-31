@@ -1,0 +1,17 @@
+!"help"
+!"123"
+!"add 1 2"
+echo !"add 1 2"
+add 3 !"mul 4 5"
+echo !123
+echo !d
+echo !hex
+
+set a 1
+echo !$b
+set b "add $a 1"
+echo !$b
+set a !$b
+get a
+set a !$b
+get a

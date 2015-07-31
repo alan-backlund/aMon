@@ -1,0 +1,31 @@
+> echo
+# Argument Error #
+> echo 1
+1
+> echo 1 2
+1
+2
+> echo 1 2 3
+1
+2
+3
+> 
+> echo a
+a
+> echo r
+r
+> echo hi
+hi
+> echo "there"
+there
+> 
+> add
+# Argument Error #
+> add 1
+# Argument Error #
+> add 1 2
+3
+> add 1 2 3
+# Argument Error #
+> exit
+

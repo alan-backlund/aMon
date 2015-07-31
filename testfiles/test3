@@ -1,0 +1,15 @@
+echo
+echo 1
+echo 1 2
+echo 1 2 3
+
+echo a
+echo r
+echo hi
+echo "there"
+
+add
+add 1
+add 1 2
+add 1 2 3
+exit

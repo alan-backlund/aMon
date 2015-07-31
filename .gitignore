@@ -1,0 +1,6 @@
+lexer.c
+*.o
+testfiles/output*
+/aMon
+/doc
+/lexer.tre2c

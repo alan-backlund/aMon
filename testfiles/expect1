@@ -1,0 +1,89 @@
+> help
+Available Commands:
+     prompt(s) - Select the prompt for input
+       set(cs) - Set register to string
+        get(c) - Display register
+       add(dd) - Add two numbers
+       sub(dd) - Subtract two numbers
+       mul(dd) - Multiply two numbers
+         hex() - Toggle output base
+      echo(s+) - Display parameter
+        help() - Display this help
+        exit() - Exit monitor
+> 123
+# Command Not Found #
+> a
+# Command Not Found #
+> foobar
+# Command Not Found #
+> "help"
+Available Commands:
+     prompt(s) - Select the prompt for input
+       set(cs) - Set register to string
+        get(c) - Display register
+       add(dd) - Add two numbers
+       sub(dd) - Subtract two numbers
+       mul(dd) - Multiply two numbers
+         hex() - Toggle output base
+      echo(s+) - Display parameter
+        help() - Display this help
+        exit() - Exit monitor
+> 
+> add 4 6
+10
+> hex
+output hexadecimal
+> add 4 6
+0xA
+> mul 4 4
+0x10
+> hex
+output decimal
+> sub 6 4
+2
+> 
+> get a
+# Register 'a' undefined #
+> add $a 1
+# Register 'a' undefined #
+# Argument Error #
+> $a
+# Register 'a' undefined #
+> 
+> set a 1
+> get a
+1
+> add $a 1
+2
+> $a
+# Command Not Found #
+> 
+> echo a
+a
+> echo hello
+hello
+> echo 123
+123
+> echo "Hi There"
+Hi There
+> echo "Goodbye
+Goodbye
+> echo $a
+1
+> echo $b
+# Register 'b' undefined #
+# Argument Error #
+> 
+> echo "Hi \"Dave\""
+Hi "Dave"
+> echo "a \b c"
+a b c
+> echo "a\\b"
+a\b
+> 
+> prompt "#"
+# set a "!!!"
+# prompt $a
+!!! 
+!!! exit
+

@@ -1,0 +1,39 @@
+help
+123
+a
+foobar
+"help"
+
+add 4 6
+hex
+add 4 6
+mul 4 4
+hex
+sub 6 4
+
+get a
+add $a 1
+$a
+
+set a 1
+get a
+add $a 1
+$a
+
+echo a
+echo hello
+echo 123
+echo "Hi There"
+echo "Goodbye
+echo $a
+echo $b
+
+echo "Hi \"Dave\""
+echo "a \b c"
+echo "a\\b"
+
+prompt "#"
+set a "!!!"
+prompt $a
+
+exit

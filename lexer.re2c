@@ -1,0 +1,208 @@
+/**
+ * \file lexer.re2c
+ * \brief Parse input into tokens
+ * \author    Alan Backlund
+ * \version   1.0
+ * \date      2015 Jul 29
+ * \copyright 2015 Alan Backlund
+ * \section License The MIT License (MIT)
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+/**
+ * \file lexer.c
+ * \brief Parse input into tokens
+ * \author    Alan Backlund
+ * \version   1.0
+ * \date      2015 Jul 29
+ * \copyright 2015 Alan Backlund
+ * \section License The MIT License (MIT)
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+#include <stdlib.h>
+#include <string.h>
+
+#include "lexer.h"
+
+#define YYCTYPE char
+#define YYGETCONDITION() currentCondition
+#define YYSETCONDITION(c) currentCondition = c
+#define YYDEBUG(state,current) {printf("re2c: %d, %d, '%c' %x\n", currentCondition, state, current, current);}
+
+ 
+/* the different forks of rules. STRING will handle strings, CODE will handle everything else */
+enum YYCONDTYPE {
+  yycCODE,
+  yycSTRING,
+} currentCondition;
+ 
+static const char* s;
+static int stkTop = 0;
+static const char* stkStrPtr[6];
+static enum YYCONDTYPE stkCurCnd[6];
+
+
+/**
+ * \brief Start a new Lexer, push any "in progress" lexer onto the stack.
+ * \param s0  pointer to string to be parsed
+ */
+void lexerStart(const char* s0)
+{
+	stkStrPtr[stkTop] = s;
+	stkCurCnd[stkTop] = currentCondition;
+	stkTop++;
+	s = s0;
+	currentCondition = yycCODE;
+}
+
+/**
+ * \brief Close current lexer, pop previous lexer from stack.
+ */
+void lexerClose()
+{
+	--stkTop;
+	s = stkStrPtr[stkTop];
+	currentCondition = stkCurCnd[stkTop];
+}
+
+/**
+ * \brief Parse the next token
+ * \returns The next token
+ */
+token_t* lexer()
+{
+	const char *yym;
+    while (*s != 0)
+    {
+		const char *q=s;	// save start pointer
+		const char *q2 = 0; 
+        /*!re2c
+			re2c:define:YYCTYPE  = "char";
+			re2c:define:YYMARKER = yym;
+			re2c:define:YYCURSOR = s;
+			re2c:yyfill:enable = 0;
+            re2c:indent:top = 2;
+            
+			EOF = [\000];
+#ifdef INCL_REG
+            REG = [a-h];
+#endif
+            STR = ["]([^"\000]+)["];
+
+            <CODE> "-"?[0-9]+  { 
+				token_t* t = tokenAlloc("lexer.re2c dec num");
+				t->t = NUM;
+				t->v.d = strtol(q, NULL, 10);
+				return t;
+			}
+            <CODE> "0x"[0-9a-fA-F]+  { 
+				token_t* t = tokenAlloc("lexer hex num");
+				t->t = NUM;
+				t->v.d = strtol(q, NULL, 16);
+				return t;
+			}
+#ifdef INCL_REG
+            <CODE> REG  { 
+				token_t* t = tokenAlloc("lexer reg");
+				t->t = REG;
+				t->v.c = *q;
+				return t;
+			}
+            <CODE> "$"REG  { 
+				token_t* t = tokenAlloc("lexer reg eval");
+				t->t = GET;
+				t->v.c = yych;
+				return t;
+			}
+#endif
+            <CODE> "!" {
+				token_t* t = tokenAlloc("lexer exec");
+				t->t = EXE;
+				return t;
+			}
+            <CODE> ["] {
+				YYSETCONDITION(yycSTRING);
+				q2 = s;
+				goto yyc_STRING;
+            }
+#ifdef INCL_EXIT
+            <CODE> "exit"  { 
+				token_t* t = tokenAlloc("lexer exit");
+				t->t = EXIT;
+				return t; 
+			}
+#endif
+            <CODE> [a-zA-Z][a-zA-Z0-9]*  {
+				token_t* t = tokenAlloc("lexer name");
+				t->t = STR;
+				int l = s - q;
+				memcpy(t->v.s, q, l);
+				t->v.s[l] = 0;
+                return t; 
+			}
+			<CODE> [^]  {
+				continue;
+			}
+			<STRING> "\\" [^\000] {
+				goto yyc_STRING;
+			}
+			<STRING> EOF | "\n" | ["]  {
+				YYSETCONDITION(yycCODE);
+				token_t* t = tokenAlloc("lexer string");
+				t->t = STR;
+				int l = s - q2 - 1;
+				// filter out chars after '\'s
+				int j = 0;
+				for (int i=0; i<l; i++)
+					if (q2[i] != '\\')
+						t->v.s[j++] = q2[i];
+					else {
+						i++;
+						if (i<l)
+							t->v.s[j++] = q2[i];
+					}
+				t->v.s[j++] = 0;
+				t->v.s[j] = 0;
+                return t; 
+			}
+			<STRING> [^]  {
+				goto yyc_STRING;
+			}
+       */
+    }
+	token_t* t = tokenAlloc("lexer");
+	t->t = END;
+	return t; 
+}
